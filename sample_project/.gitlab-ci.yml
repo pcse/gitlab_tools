@@ -1,0 +1,32 @@
+hello_world:
+        variables:
+                UNITTEST: "tests/test_hello_world.py"
+        script:
+                - PYTHONPATH=. python3 $UNITTEST
+
+say_it:
+        variables:
+                UNITTEST: "tests/test_say_it.py"
+        script:
+                - PYTHONPATH=. python3 $UNITTEST
+
+webcat-upload:
+    variables:
+        WEBCATCOURSE: "CPSC 250"
+        WEBCATTARGET: "w1-hello-world-f19"
+    script:
+        - 'if [[ -z "$WCUSER" ]]; then'
+        - '  echo "WCUSER value is not set";'
+        - '  exit 1;'
+        - 'else'
+        - '  echo "$WCUSER" > login.txt;'
+        - 'fi'
+        - 'if [[ -z "$WCPASS" ]]; then'
+        - '  echo "WCPASS value is not set";'
+        - '  exit 1;'
+        - 'else'
+        - '  echo "$WCPASS" >> login.txt;'
+        - 'fi'
+        - 'echo "using WebCat login credentials:"'
+        - 'cat login.txt'
+        - 'python3 webcat-submitter.py "$WEBCATCOURSE/$WEBCATTARGET" '
