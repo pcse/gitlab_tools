@@ -160,13 +160,38 @@ try:
             for student in student_list:
                 if gl_user.email == student.get_email():
                     gl_existing_users[student.get_email()] = gl_user
+
+
+        if not user_is_instructor:
+            # Add instructor as owner
+            print("  Adding instructor "+gl_instructor.username+" as owner of student group ...")
+            try:
+                gl_instructor_member = gitlab_utils.gl_add_user_group_project(gl_student_group,
+                                                                              gl_instructor,
+                                                                              gitlab.OWNER_ACCESS)
+                gl_instructor_member.save()
+            except gitlab.exceptions.GitlabCreateError as ex:
+                print("  GitlabCreateError: Could not add instructor as owner of student group ... " + str(ex))
+
+            except Exception as ex:
+                print("  Exception: Could not add instructor as owner of student group ... " + str(ex))
+
+
+            if (delete_admin):
+                # Remove admin
+                print("Removing admin "+admin_name+" from student group ...")
+                try:
+                    gl_student_group.members.get(admin_id).delete()
+                except Exception as ex:
+                    print("Could not remove api user as admin from the student group ... "+str(ex))
+
         # Set up accounts
         for student in student_list:
             gl_user = None
             print(student.get_email())
             # If the user exists, grab its GL handle
             if student.get_email() in gl_existing_users.keys():
-                print(" Found existing user "+student.mk_gl_username()+"!")
+                print("     Found existing user "+student.mk_gl_username()+"!")
                 gl_user = gl_existing_users[student.get_email()]
             # Otherwise, create missing user
             else:
@@ -187,21 +212,20 @@ try:
                 in_student_group = False
                 for group_member in master_group_members:
                     if group_member.id == gl_user.id:
-                        print("  user already in student group!")
+                        print("     user already in student group!")
                         in_student_group = True
                         break
 
                 # Add user to student group, if not already in it
                 if not in_student_group:
                     try:
-                        print(" Adding "+student.mk_gl_username()+" to group")
+                        print("     Adding "+student.mk_gl_username()+" to group")
                         member = gitlab_utils.gl_add_user_group_project(gl_student_group, gl_user, gitlab.REPORTER_ACCESS)
                         member.expires_at = expire_date
                         member.save()
 
                     except Exception as ex:
-                        print('Could not add {} to student group'.format(student.get_email()))
-                        print("   "+str(ex))
+                        print('     Could not add {} to student group'.format(student.get_email())+"   "+str(ex))
                         bad_add.append(student.get_email())
 
                 # Check if the student's personal group exists
@@ -217,29 +241,27 @@ try:
                     except gitlab.exceptions.GitlabHttpError as e:
                         personal_group_exists = False
                     except Exception as ex:
-                        print("Unknown exception searching for "+personal_group_name)
-                        print(str(ex))
+                        print("     Exception searching for "+personal_group_name+"   " + str(ex))
                         personal_group_exists = False
 
                     # if it does not exist
                     if not personal_group_exists:
                         # Create student personal group
-                        print(" Create personal group "+personal_group_name)
+                        print("     Create personal group "+personal_group_name)
                         try:
                             gl_personal_group = gitlab_utils.gl_create_group(gl, personal_group_name)
                             if gl_personal_group is not None:
-                                print("    done!\n   now add student to group ...")
+                                print("           now add student to group ...")
                                 gitlab_utils.gl_add_user_group_project(gl_personal_group, gl_user, gitlab.OWNER_ACCESS)
-                                print("   set as private access ...")
+                                print("           set as private access ...")
                                 gl_personal_group.visibility = "private"
                                 gl_personal_group.save()
                             else:
-                                print('Could not create personal group for email {}'.format(student.get_email()))
+                                print('           Could not create personal group for email {}'.format(student.get_email()))
                                 bad_group.append(student.get_email())
 
                         except Exception as e:
-                            print('Exception creating personal group for email {}'.format(student.get_email()))
-                            print(str(e))
+                            print('      Exception creating personal group for email {}'.format(student.get_email()),"    ", str(e))
                             bad_group.append(student.get_email())
 
                     # If we successfully created the student's personal group
@@ -250,47 +272,43 @@ try:
                             try:
                                 gl_instructor_member = gl_personal_group.members.get(admin_id)
                                 if gl_instructor_member is not None:
-                                    print("Demoting admin "+admin_name+" to reporter access ...")
+                                    print("      Demoting admin "+admin_name+" to reporter access ...")
                                     gl_instructor_member.access_level = gitlab.REPORTER_ACCESS
                                     gl_instructor_member.expires_at = expire_date
                                     gl_instructor_member.save()
                             except Exception as ex:
-                                print("group not created by this admin - cannot demote to reporter!")
+                                print("      group not created by this admin - cannot demote to reporter!")
                                 #print(ex)
                           else:
                             # Add instructor as reporter
-                            print("Adding instructor "+gl_instructor.username+" as reporter ...")
+                            print("     Adding instructor "+gl_instructor.username+" as reporter ...")
                             try:
                                 gl_instructor_member = gitlab_utils.gl_add_user_group_project(gl_personal_group,
                                                                                               gl_instructor,
                                                                                               gitlab.REPORTER_ACCESS)
 
                                 # Set expiration date
-                                print("   Set the expiration date ...")
+                                print("      Set the expiration date ...")
                                 gl_instructor_member.expires_at = expire_date
                                 gl_instructor_member.save()
                             except gitlab.exceptions.GitlabCreateError as ex:
-                                print("GitlabCreateError: Could not add instructor as reporter ...")
-                                print(str(ex))
+                                print("      GitlabCreateError: Could not add instructor as reporter ... "+str(ex))
                             except Exception as ex:
-                                print("Unknown exception: Could not add instructor as reporter ...")
-                                print(str(ex))
+                                print("      Exception: Could not add instructor as reporter ... "+str(ex))
 
                             if (delete_admin):
                                 # Remove admin
-                                print("Removing admin "+admin_name+" from personal group ...")
+                                print("     Removing admin "+admin_name+" from personal group ...")
                                 try:
                                     gl_personal_group.members.get(admin_id).delete()
                                 except Exception as ex:
-                                    print("Could not remove api user as admin ...")
-                                    print(str(ex))
+                                    print("      Could not remove api user as admin ... "+str(ex))
 
                         except Exception as ex:
-                            print("Failed instructor handling in personal group ...")
-                            print(ex)
+                            print("Failed instructor handling in personal group ... "+str(ex))
 
                     if gl_personal_group is None:
-                        print(" Failed to access the personal group "+personal_group_name)
+                        print("     Failed to access the personal group "+personal_group_name)
 
         # Print the cases where there is an account creation error
         print("Finished processing students ... ")
