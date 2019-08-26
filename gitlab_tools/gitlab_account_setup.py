@@ -277,8 +277,19 @@ try:
                                     gl_instructor_member.expires_at = expire_date
                                     gl_instructor_member.save()
                             except Exception as ex:
-                                print("      group not created by this admin - cannot demote to reporter!")
-                                #print(ex)
+                                print("      group not created by this admin - cannot demote to reporter! "+str(ex))
+                                try:
+                                    print("      add admin as reporter to existing group")
+                                    gl_instructor_member = gitlab_utils.gl_add_user_group_project(gl_personal_group,
+                                                                                                  gl_instructor,
+                                                                                                  gitlab.REPORTER_ACCESS)
+                                    print("      Set the expiration date ...")
+                                    gl_instructor_member.expires_at = expire_date
+                                    gl_instructor_member.save()
+                                except gitlab.exceptions.GitlabCreateError as ex:
+                                    print("      GitlabCreateError: Could not add admin as reporter ... "+str(ex))
+                                except Exception as ex:
+                                    print("      Exception: Could not add admin as reporter ... "+str(ex))
                           else:
                             # Add instructor as reporter
                             print("     Adding instructor "+gl_instructor.username+" as reporter ...")
