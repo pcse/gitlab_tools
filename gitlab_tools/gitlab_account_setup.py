@@ -87,7 +87,7 @@ parser.add_argument('--personal_group_suffix', default='', help='The suffix to a
 parser.add_argument('--expire', default=expire.isoformat()[:10],
                     help='The date that you want to be removed from all of these groups. Format: yyyy-mm-dd.  Default 5 months from today.')
 parser.add_argument('--instructor', default='', help='The Gitlab username of the instructor')
-parser.add_argument('--delete_admin', default='False', help='Remove the admin from created groups (default:False)')
+parser.add_argument('--delete_admin', default=False, help='Remove the admin from created groups (default:False)')
 parser.add_argument('--gitlab_url', default='https://gitlab.pcs.cnu.edu', help='The url for the Gitlab server.')
 
 args = parser.parse_args()
@@ -113,10 +113,20 @@ try:
     if instructor_name == admin_name:
         print(" API user is both admin and instructor ")
         user_is_instructor = True
+        delete_admin = False
     else:
-        if (args.delete_admin):
-            print("Delete the admin from any created groups")
-            delete_admin = True
+        try:
+            tmp_del_admin = args.delete_admin
+            if type(tmp_del_admin) == str:
+                tmp_del_admin = tmp_del_admin.lower() in ["yes","true","t",1]
+            elif type(tmp_del_admin) != bool:
+                tmp_del_admin = False
+
+            if (tmp_del_admin):
+                print("Delete the admin from any created groups")
+                delete_admin = True
+        except:
+            print("Do not delete admin from created groups!")
 
     # Find master student group (e.g. cpsc150-students-s2018)
     gl_student_group = None
