@@ -257,3 +257,31 @@ def gl_get_group_membership(gl, user_id):
                 groups.append(gl_gp)
                 break # No need to check additional members
     return groups
+
+def gl_get_project_membership(gl, user_id):
+    """
+    Get a list of all projects where user_id is a member
+    :param gl: GitLab instance
+    :param user_id: user id (not username!) this field is (gitlab User object).id
+    """
+    gl_projects = gl.projects.list(as_list=False)
+    print("  found project manager ", gl_projects)
+
+    projects=[]
+    for proj in gl_projects:
+        #proj = gl.projects.get(project.id)
+        #print(proj)
+        #print(proj._links['members'])
+        members = proj.members.list()#gl.http_list(proj._links['members'])
+        for member in members:
+            #print(member)
+            if member.id == user_id:
+                print(" found member ", member.name, ' in project ',
+                      proj.id, proj.name, proj.web_url)
+                projects.append((proj.id,proj.http_url_to_repo))
+
+    print(" Projects with user id = ", user_id)
+    for project in projects:
+        print(project)
+
+    return projects

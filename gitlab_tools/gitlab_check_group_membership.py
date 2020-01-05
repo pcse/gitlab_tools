@@ -64,7 +64,7 @@ with gl_auth(url, token, admin=True) as gl:
         users = gl.users.list(search=args.user_name)
         if len(users) != 1:
             print("users: ",users)
-            raise Exception("Invalid user name (%s)!"%(args.user_name)))
+            raise Exception("Invalid user name (%s)!"%(args.user_name))
         user=users[0] #
 
     print(" Get list of all groups that ",user.username," belongs to ...")

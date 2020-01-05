@@ -34,22 +34,27 @@
 
 # Author: David Conner, based on work by Matthew McCarthy
 """
-Removes the logged in user from any groups he/she is a member of whose name end with a given suffix.
+Removes the logged in user from a list of projects that he/she is a member of .
 This is useful for removing yourself or another instructor from student personal groups after the semester is over.
 Usage:
-./gitlab_remove_from_groups_list.py (token) (group_list) <--user_name (id)> <--gitlab_url address_of_server>
-E.g. To remove yourself from all groups listed in file group_membership.txt run
-./gitlab_remove_from_groups_list.py notmytoken group_membership.txt
+./gitlab_remove_from_projects_list.py (token) (project_list) <--user_name (id)> <--gitlab_url address_of_server>
+E.g. To remove yourself from all projects listed in file project_membership.txt run
+./gitlab_remove_from_groups_list.py notmytoken project_membership.txt
+
+The project_membership.txt file has structure of tab delimited csv file with:
+project_id  project_url
+on each line.  (Only the project_id is used by this script.)
+
 """
 import argparse
 import sys
-
+import csv
 from gitlab_utils import gl_auth
 
 parser = argparse.ArgumentParser()
 
 parser.add_argument('token', help='Your private access token from Gitlab')
-parser.add_argument('group_list', help='Text file containing list of groups to remove user from')
+parser.add_argument('project_list', help='Text file containing list of groups to remove user from')
 parser.add_argument('--user_name', default='', help='The Gitlab username')
 parser.add_argument('--gitlab_url', default='https://gitlab.pcs.cnu.edu', help='The url for the Gitlab server.')
 
@@ -72,19 +77,20 @@ with gl_auth(url, token, admin=True) as gl:
             print("Failed to find specified user :",args.user_name)
             sys.exit(-1)
 
-    print(" Removing ",gl_ins.username," from groups ...")
-    with open(args.group_list,"rt") as fin:
-        groups = [name.strip() for name in fin.readlines()]
-        for ndx, gp_name in enumerate(groups):
+    print(" Removing ",gl_ins.username," from projects ...")
+    with open(args.project_list,"rt") as fin:
+        csv_reader = csv.reader(fin, delimiter="\t")
+        for data in csv_reader:
+            project_id = int(data[0])
+            project_url = data[1]
+
             try:
-                gl_gp = gl.groups.get(gp_name)
-                for gl_mem in gl_gp.members.list(as_list=False):
-                    if gl_mem.id == gl_ins.id:
-                        try:
-                            gl_mem.delete()
-                            print("Removed ",gl_ins.username," from ",gl_gp.name,"  ",ndx+1," of ",len(groups))
-                        except Exception as e:
-                            print("Failed to remove ",gl_ins.username," from ",gl_gp.name,"  ",ndx+1," of ",len(groups))
+                gl_project = gl.projects.get(project_id)
+                try:
+                    gl_project.members.delete(gl_ins.id)
+                    print("Removed ",gl_ins.username," from ",gl_project.name)
+                except Exception as e:
+                    print("Failed to remove ",gl_ins.username," from ",gl_project.name, " ", project_id)
             except Exception as e:
-                    print("Could not find group ",gp_name,"  ",ndx+1," of ",len(groups))
+                    print("Could not find project ", project_id, " ", gl_project.name )
     print("Done!")
